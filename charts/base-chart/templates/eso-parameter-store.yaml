@@ -1,0 +1,20 @@
+{{- if .Values.parameterStoreSecrets -}}
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: "parameter-store-secrets"
+spec:
+  refreshInterval: {{ .Values.parameterStoreRefreshInterval }}
+  secretStoreRef:
+    name: aws-parameter-store
+    kind: ClusterSecretStore
+  target:
+    name: "parameter-store-secrets"
+    creationPolicy: Owner
+  data:
+  {{- range $key, $value := .Values.parameterStoreSecrets }}
+  - secretKey: {{ $key }}
+    remoteRef:
+      key: {{ $value }}
+  {{- end -}}
+{{- end -}}

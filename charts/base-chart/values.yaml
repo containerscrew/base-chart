@@ -1,0 +1,165 @@
+# Default values for base-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+
+image:
+  repository: docker.io/nginx
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Parameter store secrets
+# Map parameter store secrets to the pod
+# You need to install ESO https://external-secrets.io/latest/
+# Read the doc: https://github.com/containerscrew/base-chart/docs/eso.md
+parameterStoreRefreshInterval: 24h
+parameterStoreSecrets: {}
+  # Example
+  # VARIABLE_NAME_TO_MAP_INTO_THE_POD: VARIABLE_NAME_OF_PARAMETER_STORE
+  # MYSQL_PASSWORD: "/prd/mysql/mysql_password"
+
+
+# Map variables into the pod. Non sensitive credentials
+env: {} 
+  # Example
+  # APP_ENV: "prd"
+  # LOG_LEVEL: info
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+    # eks.amazonaws.com/role-arn: arn:aws:iam::XXXXXX:role/oidc-role-name
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: 
+   external-dns.alpha.kubernetes.io/hostname: containerscrew.com
+   kubernetes.io/ingress.class: alb
+   alb.ingress.kubernetes.io/scheme: internet-facing
+   alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+   alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+   alb.ingress.kubernetes.io/target-type: ip
+   alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:XXXXXXX:certificate/XXXXXXXX
+   alb.ingress.kubernetes.io/load-balancer-name: prd-eks-public-alb
+   alb.ingress.kubernetes.io/group.name: prd-eks-public-alb
+   alb.ingress.kubernetes.io/ssl-redirect: '443'
+   alb.ingress.kubernetes.io/healthcheck-path: '/healthz'
+   alb.ingress.kubernetes.io/tags: environment=production, project=test
+   alb.ingress.kubernetes.io/actions.deny-metrics-access: >
+     {"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"403","messageBody":"403 unauthorized"}}
+  hosts:
+    - host: containerscrew.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+# Setup metrics
+serviceMonitor:
+  enabled: false
+  additionalLabels:
+    release: kube-prometheus-stack
+  interval: 30s
+  scrapeTimeout: 25s
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+
+# Liveness and readiness probes
+livenessProbe:
+  failureThreshold: 2
+  httpGet:
+    path: /
+    port: 80
+    scheme: HTTP
+  initialDelaySeconds: 10
+  timeoutSeconds: 10
+
+readinessProbe:
+  failureThreshold: 2
+  httpGet:
+    path: /
+    port: 80
+    scheme: HTTP
+  initialDelaySeconds: 10
+  timeoutSeconds: 10
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+  # NodeGroup: apps
+
+tolerations: []
+  # - key: "dedicated"
+  #   operator: "Equal"
+  #   value: "apps"
+  #   effect: "NoSchedule"
+
+affinity: {}
